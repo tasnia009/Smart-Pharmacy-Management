@@ -5,6 +5,7 @@ import connectDB from './config/db.js';
 
 import authRoutes from './routes/authRoutes.js';
 import medicineRoutes from './routes/medicineRoutes.js';
+import saleRoutes from './routes/saleRoutes.js';
 
 dotenv.config();
 
@@ -14,18 +15,17 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Authentication Routes
+// API Routes
 app.use('/api/auth', authRoutes);
-
-// Medicine Routes
 app.use('/api/medicines', medicineRoutes);
+app.use('/api/sales', saleRoutes);
 
 // Home Route
 app.get('/', (req, res) => {
     res.send('Smart Pharmacy Backend is Running!');
 });
 
-// Health Check Route
+// Health Check
 app.get('/api/health', (req, res) => {
     res.json({
         success: true,
@@ -38,11 +38,16 @@ const PORT = process.env.PORT || 5000;
 
 // Start Server
 const startServer = async () => {
-    await connectDB();
+    try {
+        await connectDB();
 
-    app.listen(PORT, () => {
-        console.log(`Server running on port ${PORT}`);
-    });
+        app.listen(PORT, () => {
+            console.log(`Server running on port ${PORT}`);
+        });
+    } catch (error) {
+        console.error('Server startup failed:', error.message);
+        process.exit(1);
+    }
 };
 
 startServer();

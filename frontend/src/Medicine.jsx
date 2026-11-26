@@ -20,11 +20,15 @@ function Medicine() {
     lowStockLimit: 10,
   });
 
-  // Fetch medicines from backend
+  // Fetch medicines
   const fetchMedicines = async () => {
     try {
       const response = await fetch(API);
       const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Unable to load medicines');
+      }
 
       if (data.success) {
         setMedicines(data.medicines);
@@ -41,7 +45,7 @@ function Medicine() {
     fetchMedicines();
   }, []);
 
-  // Handle form input
+  // Handle input changes
   const handleChange = (e) => {
     setForm({
       ...form,
@@ -70,21 +74,22 @@ function Medicine() {
 
       const data = await response.json();
 
-      if (data.success) {
-        alert(
-          editingId
-            ? 'Medicine updated successfully!'
-            : 'Medicine added successfully!'
-        );
-
-        resetForm();
-        fetchMedicines();
-      } else {
-        alert(data.message || 'Something went wrong!');
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Something went wrong!');
       }
+
+      alert(
+        editingId
+          ? 'Medicine updated successfully!'
+          : 'Medicine added successfully!'
+      );
+
+      resetForm();
+      fetchMedicines();
+
     } catch (error) {
       console.error(error);
-      alert('Backend connection failed!');
+      alert(error.message || 'Backend connection failed!');
     }
   };
 
@@ -93,12 +98,12 @@ function Medicine() {
     setEditingId(medicine._id);
 
     setForm({
-      name: medicine.name,
-      category: medicine.category,
+      name: medicine.name || '',
+      category: medicine.category || '',
       manufacturer: medicine.manufacturer || '',
       batchNumber: medicine.batchNumber || '',
-      price: medicine.price,
-      stock: medicine.stock,
+      price: medicine.price ?? '',
+      stock: medicine.stock ?? '',
       expiryDate: medicine.expiryDate
         ? medicine.expiryDate.substring(0, 10)
         : '',
@@ -127,12 +132,15 @@ function Medicine() {
 
       const data = await response.json();
 
-      if (data.success) {
-        alert('Medicine deleted successfully!');
-        fetchMedicines();
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Delete failed!');
       }
+
+      alert('Medicine deleted successfully!');
+      fetchMedicines();
+
     } catch (error) {
-      alert('Delete failed!');
+      alert(error.message || 'Delete failed!');
     }
   };
 
@@ -153,76 +161,190 @@ function Medicine() {
     });
   };
 
-  // Search medicine
+  // Search
   const filteredMedicines = medicines.filter((medicine) =>
-    medicine.name.toLowerCase().includes(search.toLowerCase()) ||
-    medicine.category.toLowerCase().includes(search.toLowerCase())
+    [medicine.name, medicine.category, medicine.manufacturer]
+      .some((value) =>
+        String(value || '')
+          .toLowerCase()
+          .includes(search.toLowerCase())
+      )
   );
 
-  // Low stock count
+  // Statistics
   const lowStockCount = medicines.filter(
-    (medicine) => medicine.stock <= medicine.lowStockLimit
+    (medicine) =>
+      Number(medicine.stock) > 0 &&
+      Number(medicine.stock) <= Number(medicine.lowStockLimit ?? 10)
   ).length;
 
+  const outOfStockCount = medicines.filter(
+    (medicine) => Number(medicine.stock) === 0
+  ).length;
+
+  const totalStock = medicines.reduce(
+    (total, medicine) => total + Number(medicine.stock || 0),
+    0
+  );
+
+  // Stock status
+  const getStockStatus = (medicine) => {
+    const stock = Number(medicine.stock);
+    const limit = Number(medicine.lowStockLimit ?? 10);
+
+    if (stock === 0) {
+      return {
+        label: 'Out of Stock',
+        style: 'bg-red-100 text-red-700',
+      };
+    }
+
+    if (stock <= limit) {
+      return {
+        label: 'Low Stock',
+        style: 'bg-orange-100 text-orange-700',
+      };
+    }
+
+    return {
+      label: 'Available',
+      style: 'bg-emerald-100 text-emerald-700',
+    };
+  };
+
+  const inputStyle =
+    'w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm outline-none transition focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-100';
+
+  const labelStyle =
+    'mb-2 block text-sm font-semibold text-gray-700';
+
   return (
-    <div className="min-h-screen bg-gray-100 p-6">
+    <div className="space-y-7">
 
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-green-800">
-          Medicine Management
-        </h1>
+      {/* PAGE HEADER */}
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
 
-        <p className="mt-2 text-gray-600">
-          Manage medicines, inventory and stock levels.
-        </p>
-      </div>
+        <div>
+          <p className="text-sm font-semibold text-emerald-600">
+            PHARMACY MANAGEMENT
+          </p>
 
-      {/* Summary Cards */}
-      <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+          <h1 className="mt-1 text-3xl font-bold text-gray-800">
+            Medicine Inventory
+          </h1>
 
-        <div className="rounded-xl bg-white p-5 shadow">
-          <h3 className="text-gray-500">Total Medicines</h3>
-          <p className="mt-2 text-3xl font-bold text-green-700">
-            {medicines.length}
+          <p className="mt-2 text-sm text-gray-500">
+            Manage medicines, stock levels and medicine information.
           </p>
         </div>
 
-        <div className="rounded-xl bg-white p-5 shadow">
-          <h3 className="text-gray-500">Low Stock Medicines</h3>
-          <p className="mt-2 text-3xl font-bold text-orange-500">
-            {lowStockCount}
-          </p>
-        </div>
-
-        <div className="rounded-xl bg-white p-5 shadow">
-          <h3 className="text-gray-500">Total Stock Units</h3>
-          <p className="mt-2 text-3xl font-bold text-blue-600">
-            {medicines.reduce(
-              (total, medicine) => total + Number(medicine.stock),
-              0
-            )}
-          </p>
-        </div>
+        <button
+          onClick={() => {
+            resetForm();
+            document.getElementById('medicine-form')?.scrollIntoView({
+              behavior: 'smooth',
+            });
+          }}
+          className="rounded-xl bg-emerald-700 px-5 py-3 font-semibold text-white shadow-md transition hover:bg-emerald-800"
+        >
+          + Add New Medicine
+        </button>
 
       </div>
 
-      {/* Add Medicine Form */}
-      <div className="mb-8 rounded-xl bg-white p-6 shadow">
+      {/* SUMMARY CARDS */}
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
 
-        <h2 className="mb-5 text-xl font-bold text-gray-800">
-          {editingId ? 'Update Medicine' : 'Add New Medicine'}
-        </h2>
+        <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-500">Total Medicines</p>
+              <h2 className="mt-3 text-3xl font-bold text-gray-800">
+                {medicines.length}
+              </h2>
+            </div>
+
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-100 text-2xl">
+              💊
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-500">Low Stock</p>
+              <h2 className="mt-3 text-3xl font-bold text-orange-500">
+                {lowStockCount}
+              </h2>
+            </div>
+
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-orange-100 text-2xl">
+              ⚠️
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-500">Out of Stock</p>
+              <h2 className="mt-3 text-3xl font-bold text-red-500">
+                {outOfStockCount}
+              </h2>
+            </div>
+
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-red-100 text-2xl">
+              📉
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-500">Total Stock Units</p>
+              <h2 className="mt-3 text-3xl font-bold text-blue-600">
+                {totalStock}
+              </h2>
+            </div>
+
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-100 text-2xl">
+              📦
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      {/* ADD / UPDATE FORM */}
+      <div
+        id="medicine-form"
+        className="scroll-mt-5 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm md:p-8"
+      >
+
+        <div className="mb-7 flex items-center gap-3">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-100 text-2xl">
+            {editingId ? '✏️' : '➕'}
+          </div>
+
+          <div>
+            <h2 className="text-xl font-bold text-gray-800">
+              {editingId ? 'Update Medicine' : 'Add New Medicine'}
+            </h2>
+
+            <p className="mt-1 text-sm text-gray-500">
+              Enter the medicine details below.
+            </p>
+          </div>
+        </div>
 
         <form onSubmit={handleSubmit}>
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
 
             <div>
-              <label className="mb-1 block text-sm font-medium">
-                Medicine Name *
-              </label>
-
+              <label className={labelStyle}>Medicine Name *</label>
               <input
                 type="text"
                 name="name"
@@ -230,15 +352,12 @@ function Medicine() {
                 onChange={handleChange}
                 placeholder="e.g. Napa"
                 required
-                className="w-full rounded-lg border p-3"
+                className={inputStyle}
               />
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium">
-                Category *
-              </label>
-
+              <label className={labelStyle}>Category *</label>
               <input
                 type="text"
                 name="category"
@@ -246,255 +365,263 @@ function Medicine() {
                 onChange={handleChange}
                 placeholder="e.g. Tablet"
                 required
-                className="w-full rounded-lg border p-3"
+                className={inputStyle}
               />
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium">
-                Manufacturer
-              </label>
-
+              <label className={labelStyle}>Manufacturer</label>
               <input
                 type="text"
                 name="manufacturer"
                 value={form.manufacturer}
                 onChange={handleChange}
                 placeholder="Company name"
-                className="w-full rounded-lg border p-3"
+                className={inputStyle}
               />
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium">
-                Batch Number
-              </label>
-
+              <label className={labelStyle}>Batch Number</label>
               <input
                 type="text"
                 name="batchNumber"
                 value={form.batchNumber}
                 onChange={handleChange}
-                placeholder="Batch number"
-                className="w-full rounded-lg border p-3"
+                placeholder="Enter batch number"
+                className={inputStyle}
               />
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium">
-                Price (৳) *
-              </label>
-
+              <label className={labelStyle}>Price (৳) *</label>
               <input
                 type="number"
                 name="price"
                 value={form.price}
                 onChange={handleChange}
-                placeholder="Price"
+                placeholder="Enter price"
                 min="0"
                 step="0.01"
                 required
-                className="w-full rounded-lg border p-3"
+                className={inputStyle}
               />
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium">
-                Stock Quantity *
-              </label>
-
+              <label className={labelStyle}>Stock Quantity *</label>
               <input
                 type="number"
                 name="stock"
                 value={form.stock}
                 onChange={handleChange}
-                placeholder="Quantity"
+                placeholder="Enter quantity"
                 min="0"
                 required
-                className="w-full rounded-lg border p-3"
+                className={inputStyle}
               />
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium">
-                Expiry Date *
-              </label>
-
+              <label className={labelStyle}>Expiry Date *</label>
               <input
                 type="date"
                 name="expiryDate"
                 value={form.expiryDate}
                 onChange={handleChange}
                 required
-                className="w-full rounded-lg border p-3"
+                className={inputStyle}
               />
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium">
-                Supplier
-              </label>
-
+              <label className={labelStyle}>Supplier</label>
               <input
                 type="text"
                 name="supplier"
                 value={form.supplier}
                 onChange={handleChange}
                 placeholder="Supplier name"
-                className="w-full rounded-lg border p-3"
+                className={inputStyle}
               />
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium">
-                Low Stock Limit
-              </label>
-
+              <label className={labelStyle}>Low Stock Limit</label>
               <input
                 type="number"
                 name="lowStockLimit"
                 value={form.lowStockLimit}
                 onChange={handleChange}
                 min="0"
-                className="w-full rounded-lg border p-3"
+                className={inputStyle}
               />
             </div>
 
           </div>
 
-          {/* Buttons */}
-          <div className="mt-5 flex gap-3">
+          <div className="mt-7 flex flex-wrap gap-3">
 
             <button
               type="submit"
-              className="rounded-lg bg-green-700 px-6 py-3 font-semibold text-white hover:bg-green-800"
+              className="rounded-xl bg-emerald-700 px-7 py-3 font-semibold text-white shadow-md transition hover:bg-emerald-800"
             >
-              {editingId ? 'Update Medicine' : 'Add Medicine'}
+              {editingId ? '✓ Update Medicine' : '+ Save Medicine'}
             </button>
 
-            {editingId && (
-              <button
-                type="button"
-                onClick={resetForm}
-                className="rounded-lg bg-gray-500 px-6 py-3 font-semibold text-white hover:bg-gray-600"
-              >
-                Cancel
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={resetForm}
+              className="rounded-xl border border-gray-200 bg-gray-100 px-7 py-3 font-semibold text-gray-700 transition hover:bg-gray-200"
+            >
+              {editingId ? 'Cancel' : 'Clear Form'}
+            </button>
 
           </div>
 
         </form>
       </div>
 
-      {/* Medicine List */}
-      <div className="rounded-xl bg-white p-6 shadow">
+      {/* MEDICINE INVENTORY TABLE */}
+      <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
 
-        <div className="mb-5 flex flex-col justify-between gap-4 md:flex-row">
+        <div className="flex flex-col justify-between gap-4 border-b border-gray-100 p-6 md:flex-row md:items-center">
 
-          <h2 className="text-xl font-bold text-gray-800">
-            Medicine Inventory
-          </h2>
+          <div>
+            <h2 className="text-xl font-bold text-gray-800">
+              Medicine Inventory
+            </h2>
 
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search medicine..."
-            className="rounded-lg border p-3 md:w-64"
-          />
+            <p className="mt-1 text-sm text-gray-500">
+              View and manage all available medicines.
+            </p>
+          </div>
+
+          <div className="relative">
+            <span className="absolute left-4 top-3 text-gray-400">
+              🔍
+            </span>
+
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search medicines..."
+              className="w-full rounded-xl border border-gray-200 bg-gray-50 py-3 pl-11 pr-4 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 md:w-72"
+            />
+          </div>
 
         </div>
 
         {loading ? (
-          <p className="py-5 text-center">Loading medicines...</p>
+
+          <div className="p-12 text-center text-gray-500">
+            Loading medicines...
+          </div>
+
         ) : filteredMedicines.length === 0 ? (
-          <p className="py-8 text-center text-gray-500">
-            No medicines found. Add your first medicine above.
-          </p>
+
+          <div className="p-12 text-center">
+            <div className="text-5xl">💊</div>
+
+            <h3 className="mt-4 font-bold text-gray-700">
+              No Medicines Found
+            </h3>
+
+            <p className="mt-2 text-sm text-gray-500">
+              Add a medicine or try another search.
+            </p>
+          </div>
+
         ) : (
 
           <div className="overflow-x-auto">
 
-            <table className="w-full border-collapse text-left">
+            <table className="w-full min-w-[850px] text-left">
 
-              <thead>
-                <tr className="bg-green-100">
-                  <th className="border p-3">Name</th>
-                  <th className="border p-3">Category</th>
-                  <th className="border p-3">Price</th>
-                  <th className="border p-3">Stock</th>
-                  <th className="border p-3">Expiry</th>
-                  <th className="border p-3">Status</th>
-                  <th className="border p-3">Actions</th>
+              <thead className="bg-emerald-50 text-xs uppercase tracking-wider text-emerald-900">
+                <tr>
+                  <th className="px-5 py-4">Medicine</th>
+                  <th className="px-5 py-4">Category</th>
+                  <th className="px-5 py-4">Price</th>
+                  <th className="px-5 py-4">Stock</th>
+                  <th className="px-5 py-4">Expiry Date</th>
+                  <th className="px-5 py-4">Status</th>
+                  <th className="px-5 py-4">Actions</th>
                 </tr>
               </thead>
 
-              <tbody>
+              <tbody className="divide-y divide-gray-100">
 
-                {filteredMedicines.map((medicine) => (
+                {filteredMedicines.map((medicine) => {
 
-                  <tr key={medicine._id} className="hover:bg-gray-50">
+                  const status = getStockStatus(medicine);
 
-                    <td className="border p-3 font-medium">
-                      {medicine.name}
-                    </td>
+                  return (
+                    <tr
+                      key={medicine._id}
+                      className="transition hover:bg-emerald-50/40"
+                    >
 
-                    <td className="border p-3">
-                      {medicine.category}
-                    </td>
+                      <td className="px-5 py-4">
+                        <p className="font-semibold text-gray-800">
+                          {medicine.name}
+                        </p>
 
-                    <td className="border p-3">
-                      ৳{medicine.price}
-                    </td>
+                        <p className="mt-1 text-xs text-gray-400">
+                          {medicine.manufacturer || 'No manufacturer'}
+                        </p>
+                      </td>
 
-                    <td className="border p-3">
-                      {medicine.stock}
-                    </td>
+                      <td className="px-5 py-4 text-sm text-gray-600">
+                        {medicine.category}
+                      </td>
 
-                    <td className="border p-3">
-                      {new Date(medicine.expiryDate).toLocaleDateString()}
-                    </td>
+                      <td className="px-5 py-4 text-sm font-semibold text-gray-800">
+                        ৳{medicine.price}
+                      </td>
 
-                    <td className="border p-3">
+                      <td className="px-5 py-4 text-sm font-semibold text-gray-800">
+                        {medicine.stock}
+                      </td>
 
-                      {medicine.stock <= medicine.lowStockLimit ? (
-                        <span className="rounded bg-red-100 px-2 py-1 text-sm text-red-700">
-                          Low Stock
-                        </span>
-                      ) : (
-                        <span className="rounded bg-green-100 px-2 py-1 text-sm text-green-700">
-                          Available
-                        </span>
-                      )}
+                      <td className="px-5 py-4 text-sm text-gray-600">
+                        {medicine.expiryDate
+                          ? new Date(medicine.expiryDate).toLocaleDateString()
+                          : 'N/A'}
+                      </td>
 
-                    </td>
-
-                    <td className="border p-3">
-
-                      <div className="flex gap-2">
-
-                        <button
-                          onClick={() => handleEdit(medicine)}
-                          className="rounded bg-blue-500 px-3 py-1 text-white hover:bg-blue-600"
+                      <td className="px-5 py-4">
+                        <span
+                          className={`rounded-full px-3 py-1.5 text-xs font-semibold ${status.style}`}
                         >
-                          Edit
-                        </button>
+                          {status.label}
+                        </span>
+                      </td>
 
-                        <button
-                          onClick={() => handleDelete(medicine._id)}
-                          className="rounded bg-red-500 px-3 py-1 text-white hover:bg-red-600"
-                        >
-                          Delete
-                        </button>
+                      <td className="px-5 py-4">
+                        <div className="flex gap-2">
 
-                      </div>
+                          <button
+                            onClick={() => handleEdit(medicine)}
+                            className="rounded-lg bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 transition hover:bg-blue-100"
+                          >
+                            Edit
+                          </button>
 
-                    </td>
+                          <button
+                            onClick={() => handleDelete(medicine._id)}
+                            className="rounded-lg bg-red-50 px-3 py-2 text-xs font-semibold text-red-600 transition hover:bg-red-100"
+                          >
+                            Delete
+                          </button>
 
-                  </tr>
+                        </div>
+                      </td>
 
-                ))}
+                    </tr>
+                  );
+                })}
 
               </tbody>
 
@@ -502,6 +629,10 @@ function Medicine() {
 
           </div>
         )}
+
+        <div className="border-t border-gray-100 px-6 py-4 text-sm text-gray-500">
+          Showing {filteredMedicines.length} of {medicines.length} medicines
+        </div>
 
       </div>
 
