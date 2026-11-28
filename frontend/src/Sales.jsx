@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
+import Invoice from './Invoice';
 
 const API_URL = 'http://localhost:5000/api';
 
@@ -6,12 +7,18 @@ function Sales() {
     const [medicines, setMedicines] = useState([]);
     const [cart, setCart] = useState([]);
     const [search, setSearch] = useState('');
+
     const [customerName, setCustomerName] = useState('');
     const [customerPhone, setCustomerPhone] = useState('');
     const [paymentMethod, setPaymentMethod] = useState('Cash');
+
     const [loading, setLoading] = useState(true);
+    const [processing, setProcessing] = useState(false);
+
     const [message, setMessage] = useState('');
     const [error, setError] = useState('');
+
+    const [completedSale, setCompletedSale] = useState(null);
 
     // Fetch medicines
     const fetchMedicines = async () => {
@@ -24,6 +31,7 @@ function Sales() {
             }
 
             setMedicines(data.medicines || []);
+
         } catch (err) {
             setError(err.message);
         } finally {
@@ -65,7 +73,7 @@ function Sales() {
         }
     };
 
-    // Change quantity
+    // Update quantity
     const updateQuantity = (id, quantity) => {
         const medicine = medicines.find((item) => item._id === id);
         const newQuantity = Number(quantity);
@@ -108,6 +116,7 @@ function Sales() {
 
         setError('');
         setMessage('');
+        setProcessing(true);
 
         try {
             const response = await fetch(`${API_URL}/sales`, {
@@ -132,6 +141,9 @@ function Sales() {
                 throw new Error(data.message || 'Sale failed.');
             }
 
+            // Save completed sale for invoice display
+            setCompletedSale(data.sale);
+
             setMessage(
                 `Sale successful! Invoice: ${data.sale.invoiceNumber}`
             );
@@ -144,6 +156,8 @@ function Sales() {
 
         } catch (err) {
             setError(err.message);
+        } finally {
+            setProcessing(false);
         }
     };
 
@@ -257,7 +271,7 @@ function Sales() {
                         Current Bill
                     </h2>
 
-                    {/* Customer Details */}
+                    {/* Customer Information */}
                     <div className="space-y-3">
 
                         <input
@@ -319,7 +333,7 @@ function Sales() {
                                         />
 
                                         <p className="font-semibold text-green-700">
-                                            ৳{item.price * item.quantity}
+                                            ৳{(item.price * item.quantity).toFixed(2)}
                                         </p>
 
                                     </div>
@@ -361,15 +375,23 @@ function Sales() {
                     {/* Checkout */}
                     <button
                         onClick={handleCheckout}
-                        disabled={cart.length === 0}
+                        disabled={cart.length === 0 || processing}
                         className="mt-6 w-full rounded-xl bg-green-600 py-3 font-semibold text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-gray-300"
                     >
-                        Complete Sale
+                        {processing ? 'Processing...' : 'Complete Sale'}
                     </button>
 
                 </div>
 
             </div>
+
+            {/* Invoice Popup */}
+            {completedSale && (
+                <Invoice
+                    sale={completedSale}
+                    onClose={() => setCompletedSale(null)}
+                />
+            )}
 
         </div>
     );

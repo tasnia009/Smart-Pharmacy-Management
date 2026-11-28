@@ -2,9 +2,9 @@ import { useState } from 'react';
 import Medicine from './Medicine';
 import ExpiryAlerts from './ExpiryAlerts';
 import Sales from './Sales';
+import SalesHistory from './SalesHistory';
 
 function App() {
-  // Authentication States
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -19,7 +19,7 @@ function App() {
   const [activePage, setActivePage] = useState('dashboard');
   const [isRegister, setIsRegister] = useState(false);
 
-  // LOGIN FUNCTION
+  // LOGIN
   const handleLogin = async (e) => {
     e.preventDefault();
 
@@ -46,7 +46,6 @@ function App() {
       }
 
       localStorage.setItem('token', data.token);
-
       setUser(data.user);
       setActivePage('dashboard');
     } catch (error) {
@@ -56,7 +55,7 @@ function App() {
     }
   };
 
-  // REGISTER FUNCTION
+  // REGISTER
   const handleRegister = async (e) => {
     e.preventDefault();
 
@@ -98,7 +97,6 @@ function App() {
       }
 
       setSuccess('Registration successful! Please login.');
-
       setIsRegister(false);
       setName('');
       setPassword('');
@@ -110,7 +108,7 @@ function App() {
     }
   };
 
-  // LOGOUT FUNCTION
+  // LOGOUT
   const handleLogout = () => {
     localStorage.removeItem('token');
 
@@ -143,17 +141,23 @@ function App() {
       label: 'Sales & Billing',
     },
     {
+      id: 'sales-history',
+      icon: '📋',
+      label: 'Sales History',
+    },
+    {
       id: 'expiry',
       icon: '⚠️',
       label: 'Expiry Alerts',
     },
   ];
 
-  // PAGE TITLE
+  // PAGE TITLES
   const pageTitle = {
     dashboard: 'Dashboard',
     medicine: 'Medicine Management',
     sales: 'Sales & Billing',
+    'sales-history': 'Sales History',
     expiry: 'Expiry Alerts',
   };
 
@@ -165,7 +169,6 @@ function App() {
         {/* SIDEBAR */}
         <aside className="bg-emerald-950 text-white lg:w-64 lg:min-h-screen">
 
-          {/* LOGO */}
           <div className="p-6 border-b border-emerald-800">
             <h1 className="text-2xl font-bold">
               💊 Smart Pharmacy
@@ -205,7 +208,6 @@ function App() {
             </div>
           </div>
 
-          {/* SIDEBAR INFORMATION */}
           <div className="hidden lg:block p-5 mt-10">
             <div className="bg-emerald-900 rounded-xl p-4">
               <p className="font-semibold text-sm">
@@ -223,7 +225,7 @@ function App() {
         {/* MAIN CONTENT */}
         <div className="flex-1 min-w-0">
 
-          {/* TOP HEADER */}
+          {/* HEADER */}
           <header className="bg-white border-b border-gray-200 px-5 md:px-8 py-4 flex justify-between items-center">
 
             <div>
@@ -265,12 +267,11 @@ function App() {
           {/* PAGE CONTENT */}
           <main className="p-5 md:p-8">
 
-            {/* DASHBOARD PAGE */}
+            {/* DASHBOARD */}
             {activePage === 'dashboard' ? (
 
               <div>
 
-                {/* WELCOME SECTION */}
                 <div className="bg-gradient-to-r from-emerald-800 to-emerald-600 rounded-2xl p-7 md:p-10 text-white shadow-lg">
 
                   <p className="text-emerald-100 text-sm font-medium">
@@ -294,7 +295,6 @@ function App() {
 
                 </div>
 
-                {/* SECTION TITLE */}
                 <div className="mt-9 mb-5">
                   <h2 className="text-xl font-bold text-gray-800">
                     Pharmacy Management
@@ -305,10 +305,9 @@ function App() {
                   </p>
                 </div>
 
-                {/* MANAGEMENT CARDS */}
+                {/* DASHBOARD CARDS */}
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
 
-                  {/* MEDICINES CARD */}
                   <button
                     onClick={() => setActivePage('medicine')}
                     className="bg-white rounded-2xl p-6 text-left shadow-sm border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition duration-300"
@@ -330,7 +329,6 @@ function App() {
                     </p>
                   </button>
 
-                  {/* SALES & BILLING CARD */}
                   <button
                     onClick={() => setActivePage('sales')}
                     className="bg-white rounded-2xl p-6 text-left shadow-sm border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition duration-300"
@@ -352,7 +350,27 @@ function App() {
                     </p>
                   </button>
 
-                  {/* INVENTORY CARD */}
+                  <button
+                    onClick={() => setActivePage('sales-history')}
+                    className="bg-white rounded-2xl p-6 text-left shadow-sm border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition duration-300"
+                  >
+                    <div className="w-14 h-14 bg-purple-100 rounded-xl flex items-center justify-center text-3xl">
+                      📋
+                    </div>
+
+                    <h3 className="text-lg font-bold text-gray-800 mt-5">
+                      Sales History
+                    </h3>
+
+                    <p className="text-gray-500 text-sm mt-2 leading-6">
+                      View previous sales, customer details and print old invoices.
+                    </p>
+
+                    <p className="text-purple-700 font-semibold text-sm mt-5">
+                      View Sales History →
+                    </p>
+                  </button>
+
                   <button
                     onClick={() => setActivePage('medicine')}
                     className="bg-white rounded-2xl p-6 text-left shadow-sm border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition duration-300"
@@ -374,7 +392,6 @@ function App() {
                     </p>
                   </button>
 
-                  {/* EXPIRY ALERTS CARD */}
                   <button
                     onClick={() => setActivePage('expiry')}
                     className="bg-white rounded-2xl p-6 text-left shadow-sm border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition duration-300"
@@ -419,6 +436,10 @@ function App() {
                       ✓ Sales & Billing
                     </span>
 
+                    <span className="bg-purple-50 text-purple-700 px-4 py-2 rounded-lg text-sm font-medium">
+                      ✓ Sales History
+                    </span>
+
                     <span className="bg-blue-50 text-blue-700 px-4 py-2 rounded-lg text-sm font-medium">
                       ✓ Inventory Monitoring
                     </span>
@@ -439,6 +460,10 @@ function App() {
             ) : activePage === 'sales' ? (
 
               <Sales />
+
+            ) : activePage === 'sales-history' ? (
+
+              <SalesHistory />
 
             ) : activePage === 'expiry' ? (
 
@@ -477,7 +502,6 @@ function App() {
             Manage your pharmacy smarter with an easy and modern management system.
           </p>
 
-          {/* FEATURES */}
           <div className="mt-10 space-y-5">
 
             <div className="flex items-center gap-4">
